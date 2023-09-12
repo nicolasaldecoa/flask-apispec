@@ -61,9 +61,10 @@ class Converter:
     def get_operation(self, rule, view, parent=None):
         annotation = resolve_annotations(view, 'docs', parent)
         docs = merge_recursive(annotation.options)
+        params_key = 'parameters' if self.spec.openapi_version.major == 2 else 'requestBody'
         operation = {
             'responses': self.get_responses(view, parent),
-            'parameters': self.get_parameters(rule, view, docs, parent),
+            params_key: self.get_parameters(rule, view, docs, parent),
         }
         docs.pop('params', None)
         return merge_recursive([operation, docs])
