@@ -8,7 +8,7 @@ from apispec.ext.marshmallow import MarshmallowPlugin
 from marshmallow import Schema
 from marshmallow.utils import is_instance_or_subclass
 
-from flask_apispec.paths import rule_to_path, rule_to_params
+from flask_apispec.paths import rule_to_path, rule_to_params, CONVERTER_MAPPING, DEFAULT_TYPE
 from flask_apispec.utils import resolve_resource, resolve_annotations, merge_recursive
 
 APISPEC_VERSION_INFO = tuple(
@@ -61,11 +61,16 @@ class Converter:
     def get_operation(self, rule, view, parent=None):
         annotation = resolve_annotations(view, 'docs', parent)
         docs = merge_recursive(annotation.options)
-        params_key = 'parameters' if self.spec.openapi_version.major == 2 else 'requestBody'
+
         operation = {
             'responses': self.get_responses(view, parent),
-            params_key: self.get_parameters(rule, view, docs, parent),
         }
+        if self.spec.openapi_version.major == 2:
+            operation['parameters'] = self.get_parameters(rule, view, docs, parent)
+        else:
+            request_body = self.get_request_body(rule)
+            if request_body:
+                operation['requestBody'] = request_body
         docs.pop('params', None)
         return merge_recursive([operation, docs])
 
@@ -95,6 +100,27 @@ class Converter:
         rule_params = rule_to_params(rule, docs.get('params'), major_api_version=self.spec.openapi_version.major) or []
 
         return extra_params + rule_params
+
+    def get_request_body(self, rule):
+        argument = rule.arguments.pop() if rule.arguments else None
+        if not argument:
+            return None
+        type_, format_ = CONVERTER_MAPPING.get(type(rule._converters[argument]), DEFAULT_TYPE)
+        schema = {}
+        schema['type'] = type_
+        if format_ is not None:
+            schema['format'] = format_
+        request_body = {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": schema
+                }
+            }
+        }
+        if rule.defaults and argument in rule.defaults:
+            request_body['default'] = rule.defaults[argument]
+        return request_body
 
     def get_responses(self, view, parent=None):
         annotation = resolve_annotations(view, 'schemas', parent)
