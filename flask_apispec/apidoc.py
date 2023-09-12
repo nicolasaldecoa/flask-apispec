@@ -58,6 +58,7 @@ class Converter:
     def get_operations(self, rule, target):
         return {}
 
+
     def get_operation(self, rule, view, parent=None):
         annotation = resolve_annotations(view, 'docs', parent)
         docs = merge_recursive(annotation.options)
@@ -68,11 +69,24 @@ class Converter:
         if self.spec.openapi_version.major == 2 or view.__name__ == 'get':
             operation['parameters'] = self.get_parameters(rule, view, docs, parent)
         else:
-            request_body = self.get_parameters(rule, view, docs, parent)
-            if request_body:
-                operation['requestBody'] = self.get_parameters(rule, view, docs, parent)[0]
+            params = self.get_parameters(rule, view, docs, parent)
+            if params and params[0]['in'] == 'body': # in OAS 3, body params must be represented as requestBody
+                operation['requestBody'] = self.oas2_param_to_request_body(params[0])
         docs.pop('params', None)
         return merge_recursive([operation, docs])
+
+    def oas2_param_to_request_body(self, param):
+        request_body = {
+            'required': param['required'],
+            'content': {
+                'application/json': {
+                    'schema': param['schema']
+                }
+            }
+        }
+        if param.get('description'):
+            request_body['description'] = param['description']
+        return request_body
 
     def get_parent(self, view):
         return None
