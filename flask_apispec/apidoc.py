@@ -68,9 +68,9 @@ class Converter:
         if self.spec.openapi_version.major == 2 or view.__name__ == 'get':
             operation['parameters'] = self.get_parameters(rule, view, docs, parent)
         else:
-            request_body = self.get_request_body(rule)
+            request_body = self.get_parameters(rule, view, docs, parent)
             if request_body:
-                operation['requestBody'] = request_body
+                operation['requestBody'] = self.get_parameters(rule, view, docs, parent)[0]
         docs.pop('params', None)
         return merge_recursive([operation, docs])
 
@@ -84,6 +84,9 @@ class Converter:
         for args in annotation.options:
             schema = args.get('args', {})
             openapi_converter = openapi.schema2parameters
+            options = copy.copy(args.get('kwargs', {}))
+            if not options.get('location'):
+                options['location'] = 'body'
             if not is_instance_or_subclass(schema, Schema):
                 if callable(schema):
                     schema = schema(request=None)
@@ -92,35 +95,13 @@ class Converter:
                     openapi_converter = functools.partial(
                         self._convert_dict_schema, openapi_converter)
 
-            options = copy.copy(args.get('kwargs', {}))
-            if not options.get('location'):
-                options['location'] = 'body'
+
             extra_params += openapi_converter(schema, **options) if args else []
 
         rule_params = rule_to_params(rule, docs.get('params'), major_api_version=self.spec.openapi_version.major) or []
 
         return extra_params + rule_params
 
-    def get_request_body(self, rule):
-        argument = rule.arguments.pop() if rule.arguments else None
-        if not argument:
-            return None
-        type_, format_ = CONVERTER_MAPPING.get(type(rule._converters[argument]), DEFAULT_TYPE)
-        schema = {}
-        schema['type'] = type_
-        if format_ is not None:
-            schema['format'] = format_
-        request_body = {
-            "required": True,
-            "content": {
-                "application/json": {
-                    "schema": schema
-                }
-            }
-        }
-        if rule.defaults and argument in rule.defaults:
-            request_body['default'] = rule.defaults[argument]
-        return request_body
 
     def get_responses(self, view, parent=None):
         annotation = resolve_annotations(view, 'schemas', parent)
