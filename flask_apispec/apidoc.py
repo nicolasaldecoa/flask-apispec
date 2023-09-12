@@ -65,7 +65,7 @@ class Converter:
         operation = {
             'responses': self.get_responses(view, parent),
         }
-        if self.spec.openapi_version.major == 2:
+        if self.spec.openapi_version.major == 2 or view.__name__ == 'get':
             operation['parameters'] = self.get_parameters(rule, view, docs, parent)
         else:
             request_body = self.get_request_body(rule)
