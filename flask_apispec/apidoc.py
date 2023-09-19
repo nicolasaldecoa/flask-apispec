@@ -66,12 +66,11 @@ class Converter:
         operation = {
             'responses': self.get_responses(view, parent),
         }
-        if self.spec.openapi_version.major == 2 or view.__name__ == 'get':
-            operation['parameters'] = self.get_parameters(rule, view, docs, parent)
+        params = self.get_parameters(rule, view, docs, parent)
+        if view.__name__ != 'get' and self.spec.openapi_version.major == 3 and params and params[0]['in'] == 'body': # in OAS 3, body params must be represented as requestBody
+            operation['requestBody'] = self.oas2_param_to_request_body(params[0])
         else:
-            params = self.get_parameters(rule, view, docs, parent)
-            if params and params[0]['in'] == 'body': # in OAS 3, body params must be represented as requestBody
-                operation['requestBody'] = self.oas2_param_to_request_body(params[0])
+            operation['parameters'] = params
         docs.pop('params', None)
         return merge_recursive([operation, docs])
 
