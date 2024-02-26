@@ -1,6 +1,7 @@
 from flask import Response
 
 from collections.abc import Mapping
+import importlib.metadata
 
 import flask
 import marshmallow as ma
@@ -10,7 +11,7 @@ from webargs import flaskparser
 from flask_apispec import utils
 
 MARSHMALLOW_VERSION_INFO = tuple(
-    [int(part) for part in ma.__version__.split('.') if part.isdigit()]
+    [int(part) for part in importlib.metadata.version("marshmallow").split('.') if part.isdigit()]
 )
 
 

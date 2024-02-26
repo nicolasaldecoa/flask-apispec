@@ -1,5 +1,6 @@
 import copy
 import functools
+import importlib.metadata
 
 import apispec
 from apispec.core import VALID_METHODS
@@ -12,7 +13,7 @@ from flask_apispec.paths import rule_to_path, rule_to_params, CONVERTER_MAPPING,
 from flask_apispec.utils import resolve_resource, resolve_annotations, merge_recursive
 
 APISPEC_VERSION_INFO = tuple(
-    [int(part) for part in apispec.__version__.split('.') if part.isdigit()]
+    [int(part) for part in importlib.metadata.version("apispec").split('.') if part.isdigit()]
 )
 
 class Converter:
